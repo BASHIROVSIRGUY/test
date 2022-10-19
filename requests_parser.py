@@ -4,7 +4,7 @@ from bs4 import BeautifulSoup
 
 session = requests.Session()
 main_href = 'https://m.flashscore.ru.com'
-response = session.get(main_href + '/??d=0&s=3')
+response = session.get(main_href + '/?s=2')
 
 parse_obj = BeautifulSoup(response.content, 'html.parser')
 
