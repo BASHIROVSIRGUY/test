@@ -87,28 +87,46 @@ WHERE U.age > 24 AND U.age < 36
 /*
 Б) в каком месяце года выручка от пользователей в возрастном диапазоне 35+ самая большая
 */
+WITH query_revenue as 
+(SELECT DISTINCT
+    SUM(I.price) OVER (PARTITION By EXTRACT(MONTH FROM date)) as mon_revenue,
+    EXTRACT(MONTH FROM date) as mon_num
+  FROM Purchases P
+  JOIN Users U on p.userId = U.userId 
+  JOIN Items I on P.itemId = I.itemId
+  WHERE U.age > 34 AND EXTRACT(YEAR FROM date) = 2022)
 SELECT Q2.mon_num FROM
 (SELECT MAX(Q.mon_revenue) as max_mon_revenue
-from (
-  SELECT DISTINCT
-    SUM(I.price) OVER (PARTITION By EXTRACT(MONTH FROM date)) as mon_revenue,
-    EXTRACT(MONTH FROM date) as mon_num
-  FROM Purchases P
-  JOIN Users U on p.userId = U.userId 
-  JOIN Items I on P.itemId = I.itemId
-  WHERE U.age > 34 AND EXTRACT(YEAR FROM date) = 2022) as Q) as Q1
+from query_revenue as Q) as Q1
 JOIN
-  (SELECT DISTINCT
-    SUM(I.price) OVER (PARTITION By EXTRACT(MONTH FROM date)) as mon_revenue,
-    EXTRACT(MONTH FROM date) as mon_num
-  FROM Purchases P
-  JOIN Users U on p.userId = U.userId 
-  JOIN Items I on P.itemId = I.itemId
-  WHERE U.age > 34 AND EXTRACT(YEAR FROM date) = 2022) as Q2
+	query_revenue as Q2
 on Q2.mon_revenue = Q1.max_mon_revenue
 /*
 В) какой товар обеспечивает дает наибольший вклад в выручку за последний год
+*/
+WITH query_items_revenue as (
+  SELECT I.itemId as item_id, SUM(I.price) sum_price 
+  FROM Purchases P
+  JOIN Users U on p.userId = U.userId 
+  JOIN Items I on P.itemId = I.itemId
+  GROUP BY I.itemid
+)
+SELECT item_id From query_items_revenue
+WHERE sum_price = (SELECT MAX(sum_price) from query_items_revenue)
+/*
 Г) топ-3 товаров по выручке и их доля в общей выручке за любой год
 */
+WITH query_items_revenue as (
+  SELECT I.itemId as item_id, SUM(I.price) sum_price, EXTRACT(YEAR from P.date) as current_year
+  FROM Purchases P
+  JOIN Users U on p.userId = U.userId 
+  JOIN Items I on P.itemId = I.itemId
+  GROUP BY I.itemid, EXTRACT(YEAR from P.date)
+)
+SELECT item_id, sum_price/(SELECT SUM(sum_price) from query_items_revenue) as fraction
+from query_items_revenue
+WHERE current_year = 2022
+ORDER BY sum_price DESC
+LIMIT 3
 
 
